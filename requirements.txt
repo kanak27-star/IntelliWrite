@@ -1,5 +1,5 @@
 streamlit
 textblob
-language-tool-python
-numpy
 pyspellchecker
+transformers
+torch
