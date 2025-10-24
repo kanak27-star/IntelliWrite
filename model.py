@@ -1,14 +1,15 @@
+# model.py
 from textblob import TextBlob
-import language_tool_python
 from spellchecker import SpellChecker
+from transformers import AutoModelForSeq2SeqLM, AutoTokenizer
+import torch
 
 # Optional: Add common irregular verbs
 IRREGULAR_VERBS = {
+    'buyed': 'bought',
     'knowed': 'knew',
-    'has went': 'has gone',
-    'do not knowed': 'does not know',
     'goed': 'went',
-    'buyer': 'bought',
+    'has went': 'has gone',
     'doed': 'did',
     'runned': 'ran',
     # Add more if needed
@@ -16,19 +17,21 @@ IRREGULAR_VERBS = {
 
 class SpellCheckerModule:
     def __init__(self):
-        self.grammar_tool = language_tool_python.LanguageTool('en-US', remote_server='https://languagetool.org/api/v2/')
-
+        # Initialize SpellChecker for word-level spelling
         self.spell = SpellChecker()
+        
+        # Initialize transformer grammar model
+        self.tokenizer = AutoTokenizer.from_pretrained("vennify/t5-base-grammar-correction")
+        self.model = AutoModelForSeq2SeqLM.from_pretrained("vennify/t5-base-grammar-correction")
 
     def correct_spell(self, text):
         """
         Correct spelling using SpellChecker and TextBlob combined.
         """
-        # First, use SpellChecker for word-level correction
+        # Step 1: SpellChecker (word-level)
         words = text.split()
         corrected_words = []
         for word in words:
-            # Skip punctuation-only tokens
             if word.isalpha():
                 corrected_word = self.spell.correction(word)
                 corrected_words.append(corrected_word)
@@ -36,7 +39,7 @@ class SpellCheckerModule:
                 corrected_words.append(word)
         corrected_text = ' '.join(corrected_words)
 
-        # Then use TextBlob for context-aware correction
+        # Step 2: TextBlob for context-aware correction
         corrected_text = str(TextBlob(corrected_text).correct())
         return corrected_text
 
@@ -50,8 +53,8 @@ class SpellCheckerModule:
 
     def correct_grammar(self, text):
         """
-        Correct grammar after spelling and irregular verbs correction.
-        Returns corrected text, list of mistakes, and mistake count.
+        Correct grammar using transformer model after spelling and irregular verbs correction.
+        Returns corrected text.
         """
         # Step 1: Correct spelling
         corrected_text = self.correct_spell(text)
@@ -59,23 +62,22 @@ class SpellCheckerModule:
         # Step 2: Correct irregular verbs
         corrected_text = self.correct_irregular_verbs(corrected_text)
 
-        # Step 3: Correct grammar
-        matches = self.grammar_tool.check(corrected_text)
-        found_mistakes = [match.replacements[0] for match in matches if match.replacements]
-        corrected_text = self.grammar_tool.correct(corrected_text)
+        # Step 3: Transformer-based grammar correction
+        inputs = self.tokenizer(corrected_text, return_tensors="pt")
+        outputs = self.model.generate(**inputs, max_length=512)
+        grammar_corrected_text = self.tokenizer.decode(outputs[0], skip_special_tokens=True)
 
-        return corrected_text, found_mistakes, len(found_mistakes)
+        return grammar_corrected_text
 
 
 if __name__ == "__main__":
-    obj = SpellCheckerModule()
-    message = "Hello world. I has went to the market yesturday and buyed some apples, but it were too expensive."
+    checker = SpellCheckerModule()
+    message = "She do not knowed the answer, and their going to the park tomorow. I has went to the market yesturday and buyed some apples."
 
     # Step 1: Spelling correction
-    corrected_spelling = obj.correct_spell(message)
+    corrected_spelling = checker.correct_spell(message)
     print("Spell Correction:", corrected_spelling)
 
     # Step 2: Grammar correction
-    corrected_text, mistakes, count = obj.correct_grammar(message)
-    print("Grammar Correction:", corrected_text)
-    print("Mistakes found:", mistakes, "Count:", count)
+    corrected_grammar = checker.correct_grammar(message)
+    print("Grammar Correction:", corrected_grammar)
