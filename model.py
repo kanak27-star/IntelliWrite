@@ -16,7 +16,8 @@ IRREGULAR_VERBS = {
 
 class SpellCheckerModule:
     def __init__(self):
-        self.grammar_tool = language_tool_python.LanguageTool('en-US')
+        self.grammar_tool = language_tool_python.LanguageTool('en-US', remote_server='https://languagetool.org/api/v2/')
+
         self.spell = SpellChecker()
 
     def correct_spell(self, text):
