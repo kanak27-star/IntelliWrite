@@ -25,20 +25,6 @@ IntelliWrite is an AI-powered web application that detects and corrects **spelli
    git clone https://github.com/kanak27-star/spell-and-grammar-check-using-ml.git
 
 
-2. Navigate to the project folder and install dependencies:
-
-pip install -r requirements.txt
-
-
-3. Run the Streamlit app:
-
-streamlit run app.py
-
-
-4.Open the app in your browser at the provided local URL or use the Live Demo
-.
-
-
 
 License
 
